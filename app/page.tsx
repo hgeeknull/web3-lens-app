@@ -1,91 +1,59 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from './page.module.css'
+/* app/page.tsx */
+'use client'
 
-const inter = Inter({ subsets: ['latin'] })
+import { useEffect, useState } from 'react'
+import { client, exploreProfiles } from '../api'
+import Link from 'next/link'
 
 export default function Home() {
+  /* create initial state to hold array of profiles */
+  const [profiles, setProfiles] = useState<any>([])
+  useEffect(() => {
+    fetchProfiles()
+  }, [])
+  async function fetchProfiles() {
+    try {
+      /* fetch profiles from Lens API */
+      let response = await client.query({ query: exploreProfiles })
+      /* loop over profiles, create properly formatted ipfs image links */
+      let profileData = await Promise.all(response.data.exploreProfiles.items.map(async profileInfo => {
+        let profile = { ...profileInfo }
+        let picture = profile.picture
+        if (picture && picture.original && picture.original.url) {
+          if (picture.original.url.startsWith('ipfs://')) {
+            let result = picture.original.url.substring(7, picture.original.url.length)
+            profile.avatarUrl = `http://lens.infura-ipfs.io/ipfs/${result}`
+          } else {
+            profile.avatarUrl = picture.original.url
+          }
+        }
+        return profile
+      }))
+
+      /* update the local state with the profiles array */
+      setProfiles(profileData)
+    } catch (err) {
+      console.log({ err })
+    }
+  }
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <div className='pt-20'>
+      <div className='flex flex-col justify-center items-center'>
+        <h1 className='text-5xl mb-6 font-bold'>Hello Lens 🌿</h1>
+        {
+          profiles.map(profile => (
+            <div key={profile.id} className='w-2/3 shadow-md p-6 rounded-lg mb-8 flex flex-col items-center'>
+              <img className='w-48' src={profile.avatarUrl || 'https://picsum.photos/200'} />
+              <p className='text-xl text-center mt-6'>{profile.name}</p>
+              <p className='text-base text-gray-400  text-center mt-2'>{profile.bio}</p>
+              <Link href={`/profile/${profile.handle}`}>
+                <p className='cursor-pointer text-violet-600 text-lg font-medium text-center mt-2 mb-2'>{profile.handle}</p>
+              </Link>
+              <p className='text-pink-600 text-sm font-medium text-center'>{profile.stats.totalFollowers} followers</p>
+            </div>
+          ))
+        }
       </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-        <div className={styles.thirteen}>
-          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
-        </div>
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   )
 }
